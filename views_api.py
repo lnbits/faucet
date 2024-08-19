@@ -17,7 +17,8 @@ faucet_api_router = APIRouter(prefix="/api/v1")
 
 @faucet_api_router.get("")
 async def api_faucets_get(user: User = Depends(check_user_exists)):
-    return await get_faucets(user.wallet_ids)
+    faucets = await get_faucets(user.wallet_ids)
+    return faucets
 
 
 @faucet_api_router.get("/{faucet_id}", status_code=HTTPStatus.OK)

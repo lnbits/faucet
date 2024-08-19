@@ -4,7 +4,7 @@ from http import HTTPStatus
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 from lnbits.core.services import pay_invoice
-from lnurl import LnurlErrorResponseHandler
+from lnbits.lnurl import LnurlErrorResponseHandler
 
 from .crud import (
     get_faucet,
@@ -17,30 +17,36 @@ faucet_lnurl_router.route_class = LnurlErrorResponseHandler
 
 
 @faucet_lnurl_router.get(
-    "/{faucet_id}",
+    "/{k1}",
     response_class=JSONResponse,
     name="faucet.api_lnurl_response",
 )
-async def api_lnurl_response(request: Request, faucet_id: str):
-    faucet = await get_faucet(faucet_id)
-
+async def api_lnurl_response(request: Request, k1: str):
+    secret = await get_faucet_secret(k1)
+    if not secret:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND, detail="k1 is wrong."
+        )
+    faucet = await get_faucet(secret.faucet_id)
     if not faucet:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail="faucet does not exist."
         )
+    if faucet.current_k1 != k1:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST, detail="k1 is wrong."
+        )
     url = str(
-        request.url_for("withdraw.api_lnurl_callback", unique_hash=link.unique_hash)
+        request.url_for("withdraw.api_lnurl_callback", k1=k1)
     )
+    amount_msat = 100 * 1000
     return {
         "tag": "withdrawRequest",
         "callback": url,
-        "k1": link.k1,
-        "minWithdrawable": link.min_withdrawable * 1000,
-        "maxWithdrawable": link.max_withdrawable * 1000,
-        "defaultDescription": link.title,
-        "webhook_url": link.webhook_url,
-        "webhook_headers": link.webhook_headers,
-        "webhook_body": link.webhook_body,
+        "k1": k1,
+        "minWithdrawable": amount_msat,
+        "maxWithdrawable": amount_msat,
+        "defaultDescription": faucet.description or faucet.title,
     }
 
 
@@ -59,8 +65,8 @@ async def api_lnurl_callback(
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail="faucet does not exist."
         )
-    secret = get_faucet_secret(k1)
-    if not secret or secret. != faucet.secret:
+    secret = await get_faucet_secret(k1)
+    if not secret or secret.k1 != faucet.current_k1:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="k1 is wrong.")
 
     now = int(datetime.now().timestamp())

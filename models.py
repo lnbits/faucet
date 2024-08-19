@@ -22,6 +22,10 @@ class Faucet(BaseModel):
     interval: int
     start_time: datetime.datetime
     end_time: datetime.datetime
+    next_tick: datetime.datetime
+    uses: int
+    current_use: int = 0
+    current_k1: Optional[str] = None
 
 
 class FaucetSecret(BaseModel):

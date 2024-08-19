@@ -6,7 +6,45 @@ new Vue({
       faucets: [],
       faucetsTable: {
         columns: [
-          {name: 'title', align: 'left', label: 'Title', field: 'title'}
+          {name: 'title', align: 'left', label: 'Title', field: 'title'},
+          {
+            name: 'wallet',
+            label: 'Wallet',
+            field: 'wallet',
+            format: function (val, _row) {
+              return _.findWhere(user.wallets, {id: val}).name
+            }
+          },
+          {
+            name: 'start_time',
+            label: 'Start Time',
+            field: 'start_time',
+            sortable: true,
+            format: function (val, _row) {
+              return new Date(val).toLocaleString()
+            }
+          },
+          {
+            name: 'end_time',
+            label: 'End Time',
+            field: 'end_time',
+            format: function (val, _row) {
+              return new Date(val).toLocaleString()
+            }
+          },
+          {
+            name: 'next_tick',
+            label: 'Next Tick',
+            field: 'next_tick',
+            format: function (val, _row) {
+              return new Date(val).toLocaleString()
+            }
+          },
+          {
+            name: 'interval',
+            label: 'Interval',
+            field: 'interval'
+          }
         ]
       },
       createFaucetDialog: {
@@ -43,8 +81,8 @@ new Vue({
           },
           {
             type: 'input',
-            name: 'stop_time',
-            label: 'Stop Time',
+            name: 'end_time',
+            label: 'End Time',
             required: true
           },
           {
@@ -54,11 +92,7 @@ new Vue({
             required: true
           }
         ],
-        data: {
-          is_unique: false,
-          use_custom: false,
-          has_webhook: false
-        }
+        data: {}
       }
     }
   },
@@ -67,50 +101,35 @@ new Vue({
       LNbits.api
         .request('GET', `/faucet/api/v1`, this.g.user.wallets[0].adminkey)
         .then(response => {
-          this.faucets = response.data.data
+          this.faucets = response.data
         })
         .catch(error => {
           LNbits.utils.notifyApiError(error)
         })
     },
     sendFormData: function () {
-      var wallet = _.findWhere(this.g.user.wallets, {
-        id: this.createFaucetDialog.data.wallet
-      })
-      var data = _.omit(this.createFaucetDialog.data, 'wallet')
-
-      if (!data.use_custom) {
-        data.custom_url = null
-      }
-
-      if (data.use_custom && !data?.custom_url) {
-        data.custom_url = CUSTOM_URL
-      }
-
-      data.wait_time =
-        data.wait_time *
-        {
-          seconds: 1,
-          minutes: 60,
-          hours: 3600
-        }[this.createFaucetDialog.secondMultiplier]
-
+      let data = this.createFaucetDialog.data
+      // TODO: remove hack, issue with dynamic fields component
+      data.wallet = data.wallet.value
       if (data.id) {
-        this.updateFaucet(wallet, data)
+        this.updateFaucet(data)
       } else {
-        this.createFaucet(wallet, data)
+        this.createFaucet(data)
       }
     },
-    updateFaucet: function (wallet, data) {
-      // Remove webhook info if toggle is set to false
-      if (!data.has_webhook) {
-        data.webhook_url = null
-        data.webhook_headers = null
-        data.webhook_body = null
-      }
-
+    openUpdateDialog: function (faucet_id) {
+      this.createFaucetDialog.data = _.findWhere(this.faucets, {id: faucet_id})
+      this.createFaucetDialog.show = true
+    },
+    updateFaucet: function () {
+      const data = this.createFaucetDialog.data
       LNbits.api
-        .request('PUT', `/faucet/api/v1/${data.id}`, wallet.adminkey, data)
+        .request(
+          'PUT',
+          `/faucet/api/v1/${data.id}`,
+          user.wallets[0].adminkey,
+          data
+        )
         .then(response => {
           this.faucets = _.reject(this.faucets, function (obj) {
             return obj.id === data.id
@@ -122,9 +141,10 @@ new Vue({
           LNbits.utils.notifyApiError(error)
         })
     },
-    createFaucet: function (wallet, data) {
+    createFaucet: function () {
+      const data = this.createFaucetDialog.data
       LNbits.api
-        .request('POST', '/faucet/api/v1', wallet.adminkey, data)
+        .request('POST', '/faucet/api/v1', user.wallets[0].adminkey, data)
         .then(response => {
           this.faucets.push(response.data)
           this.createFaucetDialog.show = false
@@ -133,20 +153,19 @@ new Vue({
           LNbits.utils.notifyApiError(error)
         })
     },
-    deleteFaucet: function (linkId) {
-      var link = _.findWhere(this.faucets, {id: linkId})
+    deleteFaucet: function (faucetId) {
       LNbits.utils
-        .confirmDialog('Are you sure you want to delete this withdraw link?')
+        .confirmDialog('Are you sure you want to delete this faucet?')
         .onOk(() => {
           LNbits.api
             .request(
               'DELETE',
-              `/faucet/api/v1/${linkId}`,
-              _.findWhere(this.g.user.wallets, {id: link.wallet}).adminkey
+              `/faucet/api/v1/${faucetId}`,
+              user.wallets[0].adminkey
             )
             .then(() => {
               this.faucets = _.reject(this.faucets, function (obj) {
-                return obj.id === linkId
+                return obj.id === faucetId
               })
             })
             .catch(function (error) {

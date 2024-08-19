@@ -1,0 +1,40 @@
+{% extends "public.html" %} {% from "macros.jinja" import window_vars with
+context %} {% block scripts %}
+<script>
+  Vue.component(VueQrcode.name, VueQrcode)
+  const faucet = JSON.parse('{{ faucet | safe}}')
+  new Vue({
+    el: '#vue',
+    mixins: [windowMixin],
+    data: () => {
+      return {
+        here: location.protocol + '//' + location.host
+      }
+    },
+    created: () => {
+      console.log(faucet)
+    }
+  })
+</script>
+{% endblock %} {% block page %}
+<div class="row q-col-gutter-md justify-center">
+  <div class="col-12 col-sm-6 col-md-5 col-lg-4">
+    <q-card class="q-pa-lg">
+      <q-card-section class="q-pa-none">
+        <div class="text-center">
+          <a class="text-secondary" href="lightning:">
+            <q-responsive :ratio="1" class="q-mx-md">
+              <qrcode
+                :value="this.here + '/?lightning='"
+                :options="{width: 800}"
+                class="rounded-borders"
+              >
+              </qrcode>
+            </q-responsive>
+          </a>
+        </div>
+      </q-card-section>
+    </q-card>
+  </div>
+</div>
+{% endblock %}

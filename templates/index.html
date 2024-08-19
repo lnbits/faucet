@@ -33,10 +33,10 @@
           <template v-slot:header="props">
             <q-tr :props="props">
               <q-th auto-width></q-th>
+              <q-th auto-width></q-th>
               <q-th v-for="col in props.cols" :key="col.name" :props="props">
                 {{ col.label }}
               </q-th>
-              <q-th auto-width></q-th>
               <q-th auto-width></q-th>
             </q-tr>
           </template>
@@ -50,50 +50,11 @@
                   icon="launch"
                   :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
                   type="a"
-                  :href="props.row.withdraw_url"
+                  :href="'/faucet/' + props.row.id"
                   target="_blank"
                 >
-                  <q-tooltip> shareable link </q-tooltip></q-btn
+                  <q-tooltip>Open Public Page</q-tooltip></q-btn
                 >
-                <q-btn
-                  unelevated
-                  dense
-                  size="xs"
-                  icon="web_asset"
-                  :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
-                  type="a"
-                  :href="'/withdraw/img/' + props.row.id"
-                  target="_blank"
-                  ><q-tooltip> embeddable image </q-tooltip></q-btn
-                >
-                <q-btn
-                  unelevated
-                  dense
-                  size="xs"
-                  icon="reorder"
-                  :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
-                  type="a"
-                  :href="'/withdraw/csv/' + props.row.id"
-                  target="_blank"
-                  ><q-tooltip> csv list </q-tooltip></q-btn
-                >
-                <q-btn
-                  unelevated
-                  dense
-                  size="xs"
-                  icon="visibility"
-                  :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
-                  @click="openQrCodeDialog(props.row.id)"
-                  ><q-tooltip> view LNURL </q-tooltip></q-btn
-                >
-              </q-td>
-              <q-td v-for="col in props.cols" :key="col.name" :props="props">
-                {{ col.value }}
-              </q-td>
-              <q-td>
-                <q-icon v-if="props.row.webhook_url" size="14px" name="http">
-                  <q-tooltip>Webhook to {{ props.row.webhook_url}}</q-tooltip>
-                </q-icon>
               </q-td>
               <q-td auto-width>
                 <q-btn
@@ -108,10 +69,13 @@
                   flat
                   dense
                   size="xs"
-                  @click="deleteFaucetLink(props.row.id)"
+                  @click="deleteFaucet(props.row.id)"
                   icon="cancel"
                   color="pink"
                 ></q-btn>
+              </q-td>
+              <q-td v-for="col in props.cols" :key="col.name" :props="props">
+                {{ col.value }}
               </q-td>
             </q-tr>
           </template>
@@ -124,12 +88,9 @@
   <div class="col-12 col-md-5 q-gutter-y-md">
     <q-card>
       <q-card-section>
-        <h6 class="text-subtitle1 q-my-none">
-          {{SITE_TITLE}} LNURL-faucet extension
-        </h6>
+        <h6 class="text-subtitle1 q-my-none">LNURL-faucet extension</h6>
         <p class="text-caption">
-          This extension allows you to create withdraw links and vouchers for
-          your LNbits wallets.
+          This extension allows you to create faucet pages
         </p>
       </q-card-section>
     </q-card>

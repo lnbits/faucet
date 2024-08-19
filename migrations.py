@@ -1,4 +1,4 @@
-async def m002_initial(db):
+async def m005_initial(db):
     await db.execute(
         """
         CREATE TABLE faucet.faucet (
@@ -8,13 +8,17 @@ async def m002_initial(db):
             description TEXT,
             start_time TIMESTAMP NOT NULL,
             end_time TIMESTAMP NOT NULL,
-            interval INTEGER NOT NULL
+            next_tick TIMESTAMP NOT NULL,
+            interval INTEGER NOT NULL,
+            current_k1 TEXT,
+            uses INTEGER NOT NULL,
+            current_use INTEGER NOT NULL
         );
     """
     )
     await db.execute(
         """
-        CREATE TABLE faucet.faucet_secrets (
+        CREATE TABLE faucet.secret (
             k1 TEXT PRIMARY KEY,
             faucet_id TEXT NOT NULL,
             used_time TIMESTAMP

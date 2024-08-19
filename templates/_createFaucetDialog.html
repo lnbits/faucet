@@ -2,7 +2,7 @@
   <q-card class="q-pa-lg q-pt-xl lnbits__dialog-card">
     <div class="row">
       <div class="col-12">
-        <q-form @submit="createFaucet">
+        <q-form @submit="sendFormData">
           <lnbits-dynamic-fields
             :options="createFaucetDialog.fields"
             v-model="createFaucetDialog.data"
