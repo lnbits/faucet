@@ -11,6 +11,7 @@ async def m005_initial(db):
             next_tick TIMESTAMP NOT NULL,
             interval INTEGER NOT NULL,
             current_k1 TEXT,
+            lnurl TEXT,
             uses INTEGER NOT NULL,
             current_use INTEGER NOT NULL
         );

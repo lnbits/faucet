@@ -1,3 +1,4 @@
+import datetime
 from typing import Optional
 
 from lnbits.db import Database
@@ -11,13 +12,12 @@ db = Database("ext_faucet")
 async def create_faucet(data: CreateFaucet) -> Faucet:
     faucet_id = urlsafe_short_hash()
     k1 = ""
-    uses = 10
-    for _ in range(10):
+    for _ in range(data.uses):
         k1 = urlsafe_short_hash()
         await create_faucet_secret(FaucetSecret(k1=k1, faucet_id=faucet_id))
 
     faucet = Faucet(
-        id=faucet_id, current_k1=k1, uses=uses, next_tick=data.start_time, **data.dict()
+        id=faucet_id, next_tick=data.start_time, **data.dict()
     )
     await db.execute(
         insert_query("faucet.faucet", faucet),
@@ -35,6 +35,21 @@ async def delete_faucet(faucet_id: str) -> None:
 async def get_faucet(faucet_id: str) -> Optional[Faucet]:
     row = await db.fetchone("SELECT * FROM faucet.faucet WHERE id = ?", (faucet_id,))
     return Faucet(**row) if row else None
+
+
+async def get_active_faucets() -> list[Faucet]:
+    now = int(datetime.datetime.now().timestamp())
+    ph = db.timestamp_placeholder
+    rows = await db.fetchall(
+        f"""
+        SELECT * FROM faucet.faucet WHERE start_time <= {ph} AND end_time >= {ph}
+        """,
+        (
+            now,
+            now,
+        ),
+    )
+    return [Faucet(**row) for row in rows]
 
 
 async def get_faucets(wallet_ids: list[str]) -> list[Faucet]:

@@ -1,3 +1,4 @@
+import datetime
 from http import HTTPStatus
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -43,6 +44,17 @@ async def api_faucet_create(
 ) -> Faucet:
     if key_type.wallet.id != data.wallet:
         raise HTTPException(detail="Not your wallet.", status_code=HTTPStatus.FORBIDDEN)
+    if data.start_time > data.end_time:
+        raise HTTPException(
+            detail="Start time must be before end time.",
+            status_code=HTTPStatus.BAD_REQUEST,
+        )
+    now = int(datetime.datetime.now().timestamp())
+    if data.start_time.timestamp() < now:
+        raise HTTPException(
+            detail="Start time must be in the future.",
+            status_code=HTTPStatus.BAD_REQUEST,
+        )
     return await create_faucet(data)
 
 

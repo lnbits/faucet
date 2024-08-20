@@ -44,6 +44,16 @@ new Vue({
             name: 'interval',
             label: 'Interval',
             field: 'interval'
+          },
+          {
+            name: 'uses',
+            label: 'Uses',
+            field: 'uses'
+          },
+          {
+            name: 'current_use',
+            label: 'Current Use',
+            field: 'current_use'
           }
         ]
       },
@@ -90,6 +100,12 @@ new Vue({
             name: 'interval',
             label: 'Interval',
             required: true
+          },
+          {
+            type: 'number',
+            name: 'uses',
+            label: 'Uses',
+            required: true
           }
         ],
         data: {}
@@ -116,6 +132,10 @@ new Vue({
       } else {
         this.createFaucet(data)
       }
+    },
+    openCreateDialog: function () {
+      this.createFaucetDialog.data = {}
+      this.createFaucetDialog.show = true
     },
     openUpdateDialog: function (faucet_id) {
       this.createFaucetDialog.data = _.findWhere(this.faucets, {id: faucet_id})
