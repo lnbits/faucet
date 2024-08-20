@@ -1,6 +1,13 @@
 from http import HTTPStatus
 
-from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.responses import HTMLResponse
 from lnbits.core.models import User
 from lnbits.decorators import check_user_exists
@@ -38,6 +45,7 @@ async def public(request: Request, faucet_id: str):
             "faucet_data": faucet.json(),
         },
     )
+
 
 @faucet_generic_router.websocket("/{faucet_id}/ws")
 async def websocket_faucet(websocket: WebSocket, faucet_id: str):

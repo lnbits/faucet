@@ -11,7 +11,6 @@ from .crud import (
     get_faucet_secret,
 )
 
-
 faucet_lnurl_router = APIRouter(prefix="/api/v1/lnurl")
 faucet_lnurl_router.route_class = LnurlErrorResponseHandler
 
@@ -24,21 +23,15 @@ faucet_lnurl_router.route_class = LnurlErrorResponseHandler
 async def api_lnurl_response(request: Request, k1: str):
     secret = await get_faucet_secret(k1)
     if not secret:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="k1 is wrong."
-        )
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="k1 is wrong.")
     faucet = await get_faucet(secret.faucet_id)
     if not faucet:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail="faucet does not exist."
         )
     if faucet.current_k1 != k1:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST, detail="k1 is wrong."
-        )
-    url = str(
-        request.url_for("withdraw.api_lnurl_callback", k1=k1)
-    )
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="k1 is wrong.")
+    url = str(request.url_for("withdraw.api_lnurl_callback", k1=k1))
     amount_msat = 100 * 1000
     return {
         "tag": "withdrawRequest",
@@ -119,5 +112,3 @@ async def api_lnurl_callback(
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST, detail=f"withdraw not working. {exc!s}"
         ) from exc
-
-

@@ -8,7 +8,6 @@ from loguru import logger
 from .crud import get_active_faucets
 from .models import Faucet
 
-
 public_ws_listeners: dict[str, WebSocket] = {}
 
 

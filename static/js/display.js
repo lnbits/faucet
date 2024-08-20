@@ -9,15 +9,15 @@ new Vue({
     countdownTimer: null
   }),
   computed: {
-      title: function () {
-        return `${this.faucet.title} (${this.faucet.current_use} / ${this.faucet.uses})`
-      },
-      qrLink: function () {
-        return `${window.location.origin}?lightning:${this.faucet.lnurl}`
-      },
-      qrValue: function () {
-        return `lightning:${this.faucet.lnurl}`
-      }
+    title: function () {
+      return `${this.faucet.title} (${this.faucet.current_use} / ${this.faucet.uses})`
+    },
+    qrLink: function () {
+      return `${window.location.origin}?lightning:${this.faucet.lnurl}`
+    },
+    qrValue: function () {
+      return `lightning:${this.faucet.lnurl}`
+    }
   },
   methods: {
     initWs: async function () {
@@ -26,7 +26,7 @@ new Vue({
       this.ws = new WebSocket(url)
       this.ws.addEventListener('message', async ({data}) => {
         const res = JSON.parse(data.toString())
-        console.log(res);
+        console.log(res)
         this.faucet.current_use = res.current_use
         this.faucet.lnurl = res.lnurl
         this.faucet.next_tick = res.next_tick

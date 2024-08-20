@@ -16,9 +16,7 @@ async def create_faucet(data: CreateFaucet) -> Faucet:
         k1 = urlsafe_short_hash()
         await create_faucet_secret(FaucetSecret(k1=k1, faucet_id=faucet_id))
 
-    faucet = Faucet(
-        id=faucet_id, next_tick=data.start_time, **data.dict()
-    )
+    faucet = Faucet(id=faucet_id, next_tick=data.start_time, **data.dict())
     await db.execute(
         insert_query("faucet.faucet", faucet),
         (*faucet.dict().values(),),
