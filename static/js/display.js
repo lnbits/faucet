@@ -26,11 +26,19 @@ new Vue({
       this.ws = new WebSocket(url)
       this.ws.addEventListener('message', async ({data}) => {
         const res = JSON.parse(data.toString())
+        console.log("ws message:", res)
         this.faucet.current_use = res.current_use
         this.faucet.current_k1 = res.current_k1
         this.faucet.lnurl = res.lnurl
         this.faucet.next_tick = res.next_tick
         this.startCountdown()
+        if (res.lnurl === null) {
+            this.$q.notify({
+                type: 'positive',
+                message: 'Faucet was drained!!!',
+                timeout: 3000
+            })
+        }
       })
       this.ws.addEventListener('close', async () => {
         this.$q.notify({
@@ -75,6 +83,7 @@ new Vue({
     },
     startCountdown: function () {
       if (this.countdownTimer) clearInterval(this.countdownTimer)
+      this.countdown = this.calculateCountdown()
       this.countdownTimer = setInterval(() => {
           this.countdown = this.calculateCountdown()
       }, 1000)

@@ -2,6 +2,7 @@ import asyncio
 import datetime
 
 from fastapi import WebSocket
+from fastapi.websockets import WebSocketState
 from lnbits.settings import settings
 from lnurl import encode as lnurl_encode
 from loguru import logger
@@ -61,9 +62,10 @@ async def send_websocket_messages(faucet: Faucet):
     for faucet_id, websockets in public_ws_listeners.items():
         if faucet_id == faucet.id:
             for websocket in websockets:
-                await websocket.send_json({
-                    "current_use": faucet.current_use,
-                    "current_k1": faucet.current_k1,
-                    "lnurl": faucet.lnurl,
-                    "next_tick": faucet.next_tick.strftime('%Y-%m-%dT%H:%M:%S.%f'),
-                })
+                if websocket.client_state == WebSocketState.CONNECTED:
+                    await websocket.send_json({
+                        "current_use": faucet.current_use,
+                        "current_k1": faucet.current_k1,
+                        "lnurl": faucet.lnurl,
+                        "next_tick": faucet.next_tick.isoformat(),
+                    })

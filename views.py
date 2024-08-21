@@ -64,8 +64,6 @@ async def websocket_faucet(websocket: WebSocket, faucet_id: str):
         while settings.lnbits_running:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        pass
-        # for ws in public_ws_listeners.get(faucet_id, []):
-        #     if ws == websocket:
-        #         public_ws_listeners[faucet_id].remove(ws)
-        #         logger.debug(f"Removed {ws} from {faucet_id}")
+        for ws in public_ws_listeners.get(faucet_id, []):
+            if ws == websocket:
+                public_ws_listeners[faucet_id].remove(ws)

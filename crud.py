@@ -98,7 +98,7 @@ async def delete_faucet_secret(k1: str) -> None:
 
 async def update_faucet_secret(secret: FaucetSecret) -> FaucetSecret:
     await db.execute(
-        update_query("faucet.secret", secret),
+        update_query("faucet.secret", secret, "WHERE k1 = ?"),
         (*secret.dict().values(), secret.k1),
     )
     return secret

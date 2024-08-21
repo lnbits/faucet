@@ -142,11 +142,11 @@ new Vue({
       const faucet_id = this.createFaucetDialog.data.faucet_id
       let data = this.createFaucetDialog.data
       // TODO: remove hack, issue with dynamic fields component
-      data.wallet = data.wallet.value
       if (faucet_id !== undefined) {
         data.id = faucet_id
         this.updateFaucet(data)
       } else {
+        data.wallet = data.wallet.value
         this.createFaucet(data)
       }
     },
@@ -156,7 +156,6 @@ new Vue({
     },
     openUpdateDialog: function (faucet_id) {
       this.createFaucetDialog.data = _.findWhere(this.faucets, {id: faucet_id})
-      console.log(this.createFaucetDialog.data.id)
       this.createFaucetDialog.data.faucet_id = faucet_id
       this.createFaucetDialog.show = true
     },
@@ -173,7 +172,7 @@ new Vue({
           this.faucets = _.reject(this.faucets, function (obj) {
             return obj.id === data.id
           })
-          this.faucets.push(mapFaucet(response.data))
+          this.faucets.push(response.data)
           this.createFaucetDialog.show = false
         })
         .catch(error => {
