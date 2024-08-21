@@ -28,9 +28,7 @@ async def faucet_tick(faucet: Faucet):
     if now <= faucet.next_tick.timestamp():
         return
 
-    faucet.next_tick = datetime.datetime.fromtimestamp(
-        now + faucet.interval
-    )
+    faucet.next_tick = datetime.datetime.fromtimestamp(now + faucet.interval)
     faucet = await update_secret(faucet)
     await update_faucet(faucet)
     await send_websocket_messages(faucet)
@@ -63,9 +61,11 @@ async def send_websocket_messages(faucet: Faucet):
         if faucet_id == faucet.id:
             for websocket in websockets:
                 if websocket.client_state == WebSocketState.CONNECTED:
-                    await websocket.send_json({
-                        "current_use": faucet.current_use,
-                        "current_k1": faucet.current_k1,
-                        "lnurl": faucet.lnurl,
-                        "next_tick": faucet.next_tick.isoformat(),
-                    })
+                    await websocket.send_json(
+                        {
+                            "current_use": faucet.current_use,
+                            "current_k1": faucet.current_k1,
+                            "lnurl": faucet.lnurl,
+                            "next_tick": faucet.next_tick.isoformat(),
+                        }
+                    )

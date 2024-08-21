@@ -13,7 +13,6 @@ from lnbits.core.models import User
 from lnbits.decorators import check_user_exists
 from lnbits.helpers import template_renderer
 from lnbits.settings import settings
-from loguru import logger
 
 from .crud import get_faucet
 from .tasks import public_ws_listeners
