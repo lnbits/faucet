@@ -1,29 +1,29 @@
-async def m001_initial(db):
+async def m005_initial(db):
     await db.execute(
         """
-        CREATE TABLE faucet.faucet_links (
+        CREATE TABLE faucet.faucet (
             id TEXT PRIMARY KEY,
-            wallet TEXT,
-            title TEXT,
+            wallet TEXT NOT NULL,
+            title TEXT NOT NULL,
             description TEXT,
-            min_withdrawable INTEGER,
-            max_withdrawable INTEGER,
-            min_wait_time INTEGER,
-            max_wait_time INTEGER,
-            start_time INTEGER,
-            end_time INTEGER
+            start_time TIMESTAMP NOT NULL,
+            end_time TIMESTAMP NOT NULL,
+            next_tick TIMESTAMP NOT NULL,
+            interval INTEGER NOT NULL,
+            current_k1 TEXT,
+            lnurl TEXT,
+            uses INTEGER NOT NULL,
+            current_use INTEGER NOT NULL,
+            withdrawable INTEGER NOT NULL
         );
     """
     )
     await db.execute(
         """
-        CREATE TABLE faucet.faucet_withdraws (
-            id TEXT PRIMARY KEY,
-            link_id TEXT,
-            amount INTEGER,
-            time INTEGER,
-            spent BOOLEAN DEFAULT 0,
-            spent_time INTEGER
+        CREATE TABLE faucet.secret (
+            k1 TEXT PRIMARY KEY,
+            faucet_id TEXT NOT NULL,
+            used_time TIMESTAMP
         );
     """
     )

@@ -1,70 +1,68 @@
 from http import HTTPStatus
-from io import BytesIO
 
-import pyqrcode
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+)
+from fastapi.responses import HTMLResponse
 from lnbits.core.models import User
-from lnbits.decorators import require_admin_key
+from lnbits.decorators import check_user_exists
 from lnbits.helpers import template_renderer
-from lnurl import encode as lnurl_encode
+from lnbits.settings import settings
 
-from .crud import get_faucet_link
+from .crud import get_faucet
+from .tasks import public_ws_listeners
 
-faucet_ext_generic = APIRouter()
+faucet_generic_router = APIRouter()
 
 
 def faucet_renderer():
     return template_renderer(["faucet/templates"])
 
 
-@faucet_ext_generic.get("/", response_class=HTMLResponse)
-async def index(request: Request, user: User = Depends(require_admin_key)):
+@faucet_generic_router.get("/", response_class=HTMLResponse)
+async def index(request: Request, user: User = Depends(check_user_exists)):
     return faucet_renderer().TemplateResponse(
         "index.html", {"request": request, "user": user.dict()}
     )
 
 
-@faucet_ext_generic.get("/{link_id}", response_class=HTMLResponse)
-async def public(request: Request, link_id: str):
-    link = await get_faucet_link(link_id)
-    if not link:
+@faucet_generic_router.get("/{faucet_id}", response_class=HTMLResponse)
+async def public(request: Request, faucet_id: str):
+    faucet = await get_faucet(faucet_id)
+    if not faucet:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail="Faucet does not exist."
         )
-    url = str(request.url_for("faucet.api_lnurl_response"))
     return faucet_renderer().TemplateResponse(
-        "public.html",
+        "display.html",
         {
             "request": request,
-            "link": link.dict(),
-            "lnurl": lnurl_encode(url),
+            "faucet_data": faucet.json(),
         },
     )
 
 
-@faucet_ext_generic.get("/img/{link_id}", response_class=StreamingResponse)
-async def img(request: Request, link_id):
-    link = await get_faucet_link(link_id, 0)
-    if not link:
+@faucet_generic_router.websocket("/{faucet_id}/ws")
+async def websocket_faucet(websocket: WebSocket, faucet_id: str):
+    faucet = await get_faucet(faucet_id)
+    if not faucet:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Withdraw link does not exist."
+            status_code=HTTPStatus.NOT_FOUND, detail="Faucet does not exist."
         )
-    url = str(request.url_for("faucet.api_lnurl_response"))
-    qr = pyqrcode.create(lnurl_encode(url))
-    stream = BytesIO()
-    qr.svg(stream, scale=3)
-    stream.seek(0)
-
-    async def _generator(stream: BytesIO):
-        yield stream.getvalue()
-
-    return StreamingResponse(
-        _generator(stream),
-        headers={
-            "Content-Type": "image/svg+xml",
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0",
-        },
-    )
+    await websocket.accept()
+    if faucet_id not in public_ws_listeners:
+        public_ws_listeners[faucet_id] = []
+    public_ws_listeners[faucet_id].append(websocket)
+    try:
+        # Keep the connection alive
+        while settings.lnbits_running:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        for ws in public_ws_listeners.get(faucet_id, []):
+            if ws == websocket:
+                public_ws_listeners[faucet_id].remove(ws)

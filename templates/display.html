@@ -1,0 +1,60 @@
+{% extends "public.html" %} {% from "macros.jinja" import window_vars with
+context %} {% block page %}
+<div class="row q-col-gutter-md justify-center">
+  <div class="col-12 col-sm-6 col-md-5 col-lg-4">
+    <q-card class="q-pa-lg">
+      <q-card-section class="q-pa-none">
+        <div class="text-center">
+          <h2 class="text-h5" v-text="title"></h2>
+          <h1 class="text-h6" v-text="headline"></h1>
+          <p>
+            Running from
+            <span v-text="formatDateTime(faucet.start_time)"></span>
+            to
+            <span v-text="formatDateTime(faucet.end_time)"></span>
+          </p>
+          <div v-if="!hasEnded()">
+            <h5>
+              <span v-if="countdown.days > 0"
+                ><span v-text="countdown.days"></span> days,</span
+              >
+              <span v-if="countdown.hours > 0"
+                ><span v-text="countdown.hours"></span> hours,</span
+              >
+              <span v-if="countdown.minutes > 0"
+                ><span v-text="countdown.minutes"></span> minutes,</span
+              >
+              <span v-text="countdown.seconds"></span> seconds
+            </h5>
+          </div>
+          <div v-if="isRunning()">
+            <p>
+              <a
+                v-if="faucet.lnurl !== null"
+                class="text-secondary"
+                :href="qrLink"
+              >
+                <q-responsive :ratio="1" class="q-mx-md">
+                  <qrcode
+                    :value="qrValue"
+                    :options="{width: 800}"
+                    class="rounded-borders"
+                  ></qrcode>
+                </q-responsive>
+              </a>
+            </p>
+          </div>
+          <div v-else>
+            <h2 class="text-h6">Faucet is closed.</h2>
+          </div>
+        </div>
+      </q-card-section>
+    </q-card>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  const faucet_data = JSON.parse({{ faucet_data | tojson }});
+</script>
+<script src="{{ static_url_for('faucet/static', path='js/display.js') }}"></script>
+{% endblock %}

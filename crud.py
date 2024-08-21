@@ -1,106 +1,104 @@
-from datetime import datetime
-from typing import List, Optional, Tuple
+import datetime
+from typing import Optional
 
 from lnbits.db import Database
-from lnbits.helpers import urlsafe_short_hash
+from lnbits.helpers import insert_query, update_query, urlsafe_short_hash
 
-from .models import CreateFaucetData, FaucetLink
+from .models import CreateFaucet, Faucet, FaucetSecret
 
 db = Database("ext_faucet")
 
 
-async def create_faucet_link(
-    data: CreateFaucetData, wallet_id: str
-) -> FaucetLink:
-    link_id = urlsafe_short_hash()#[:22]
+async def create_faucet(data: CreateFaucet) -> Faucet:
+    faucet_id = urlsafe_short_hash()
+    k1 = ""
+    for _ in range(data.uses):
+        k1 = urlsafe_short_hash()
+        await create_faucet_secret(FaucetSecret(k1=k1, faucet_id=faucet_id))
+
+    faucet = Faucet(id=faucet_id, next_tick=data.start_time, **data.dict())
     await db.execute(
-        """
-        INSERT INTO faucet.faucet_link (
-            id,
-            wallet,
-            title,
-            min_faucetable,
-            max_faucetable,
-            uses,
-            wait_time,
-            is_unique,
-            unique_hash,
-            k1,
-            open_time,
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        insert_query("faucet.faucet", faucet),
+        (*faucet.dict().values(),),
+    )
+
+    return faucet
+
+
+async def delete_faucet(faucet_id: str) -> None:
+    await db.execute("DELETE FROM faucet.faucet WHERE id = ?", (faucet_id,))
+    await db.execute("DELETE FROM faucet.secret WHERE faucet_id = ?", (faucet_id,))
+
+
+async def get_faucet(faucet_id: str) -> Optional[Faucet]:
+    row = await db.fetchone("SELECT * FROM faucet.faucet WHERE id = ?", (faucet_id,))
+    return Faucet(**row) if row else None
+
+
+async def get_active_faucets() -> list[Faucet]:
+    now = int(datetime.datetime.now().timestamp())
+    ph = db.timestamp_placeholder
+    rows = await db.fetchall(
+        f"""
+        SELECT * FROM faucet.faucet WHERE start_time <= {ph} AND end_time >= {ph}
         """,
         (
-            link_id,
-            wallet_id,
-            data.title,
-            data.min_faucetable,
-            data.max_faucetable,
-            data.uses,
-            data.wait_time,
-            int(data.is_unique),
-            urlsafe_short_hash(),
-            urlsafe_short_hash(),
-            int(datetime.now().timestamp()) + data.wait_time,
+            now,
+            now,
         ),
     )
-    link = await get_faucet_link(link_id, 0)
-    assert link, "Newly created link couldn't be retrieved"
-    return link
+    return [Faucet(**row) for row in rows]
 
 
-async def get_faucet_link(link_id: str, num=0) -> Optional[FaucetLink]:
-    row = await db.fetchone(
-        "SELECT * FROM faucet.faucet_link WHERE id = ?", (link_id,)
-    )
-    if not row:
-        return None
-
-    link = dict(**row)
-    link["number"] = num
-
-    return FaucetLink.parse_obj(link)
-
-
-async def get_faucet_links(
-    wallet_ids: List[str], limit: int, offset: int
-) -> Tuple[List[FaucetLink], int]:
+async def get_faucets(wallet_ids: list[str]) -> list[Faucet]:
     rows = await db.fetchall(
-        """
-        SELECT * FROM faucet.faucet_link
-        WHERE wallet IN ({})
-        ORDER BY open_time DESC
-        LIMIT ? OFFSET ?
-        """.format(
-            ",".join("?" * len(wallet_ids))
-        ),
-        (*wallet_ids, limit, offset),
-    )
-
-    total = await db.fetchone(
-        """
-        SELECT COUNT(*) as total FROM faucet.faucet_link
-        WHERE wallet IN ({})
-        """.format(
+        "SELECT * FROM faucet.faucet WHERE wallet IN ({})".format(
             ",".join("?" * len(wallet_ids))
         ),
         (*wallet_ids,),
     )
+    return [Faucet(**row) for row in rows]
 
-    return [FaucetLink(**row) for row in rows], total["total"]
 
-
-async def update_faucet_link(link_id: str, **kwargs) -> Optional[FaucetLink]:
-    q = ", ".join([f"{field[0]} = ?" for field in kwargs.items()])
+async def update_faucet(faucet: Faucet) -> Faucet:
     await db.execute(
-        f"UPDATE faucet.faucet_link SET {q} WHERE id = ?",
-        (*kwargs.values(), link_id),
+        update_query("faucet.faucet", faucet),
+        (*faucet.dict().values(), faucet.id),
     )
+    return faucet
+
+
+async def create_faucet_secret(secret: FaucetSecret) -> FaucetSecret:
+    await db.execute(
+        insert_query("faucet.secret", secret),
+        (*secret.dict().values(),),
+    )
+    return secret
+
+
+async def get_faucet_secret(k1: str) -> Optional[FaucetSecret]:
+    row = await db.fetchone("SELECT * FROM faucet.secret WHERE k1 = ?", (k1,))
+    return FaucetSecret(**row) if row else None
+
+
+async def get_next_faucet_secret(faucet_id: str) -> Optional[FaucetSecret]:
     row = await db.fetchone(
-        "SELECT * FROM faucet.faucet_link WHERE id = ?", (link_id,)
+        """
+        SELECT * FROM faucet.secret
+        WHERE used_time IS NULL AND faucet_id = ?
+        """,
+        (faucet_id,),
     )
-    return FaucetLink(**row) if row else None
+    return FaucetSecret(**row) if row else None
 
 
-async def delete_faucet_link(link_id: str) -> None:
-    await db.execute("DELETE FROM faucet.faucet_link WHERE id = ?", (link_id,))
+async def delete_faucet_secret(k1: str) -> None:
+    await db.execute("DELETE FROM faucet.secret WHERE k1 = ?", (k1,))
+
+
+async def update_faucet_secret(secret: FaucetSecret) -> FaucetSecret:
+    await db.execute(
+        update_query("faucet.secret", secret, "WHERE k1 = ?"),
+        (*secret.dict().values(), secret.k1),
+    )
+    return secret
