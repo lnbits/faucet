@@ -1,26 +1,55 @@
 from datetime import datetime
 from http import HTTPStatus
+from typing import Callable
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
+from fastapi.routing import APIRoute
+from lnbits.core.crud import get_wallet
 from lnbits.core.services import pay_invoice
-from lnbits.lnurl import LnurlErrorResponseHandler
+from lnbits.exceptions import InvoiceError, PaymentError
+from loguru import logger
 
 from .crud import (
     get_faucet,
     get_faucet_secret,
+    update_faucet,
+    update_faucet_secret,
 )
+from .models import Faucet, FaucetSecret
+
+
+class LnurlErrorResponseHandler(APIRoute):
+    def get_route_handler(self) -> Callable:
+        original_route_handler = super().get_route_handler()
+
+        async def custom_route_handler(request: Request) -> Response:
+            try:
+                response = await original_route_handler(request)
+                return response
+            except (InvoiceError, PaymentError) as exc:
+                logger.debug(f"Wallet Error: {exc}")
+                response = JSONResponse(
+                    status_code=200,
+                    content={"status": "ERROR", "reason": f"{exc.message}"},
+                )
+                return response
+            except HTTPException as exc:
+                logger.debug(f"HTTPException: {exc}")
+                response = JSONResponse(
+                    status_code=200,
+                    content={"status": "ERROR", "reason": f"{exc.detail}"},
+                )
+                return response
+
+        return custom_route_handler
+
 
 faucet_lnurl_router = APIRouter(prefix="/api/v1/lnurl")
 faucet_lnurl_router.route_class = LnurlErrorResponseHandler
 
 
-@faucet_lnurl_router.get(
-    "/{k1}",
-    response_class=JSONResponse,
-    name="faucet.api_lnurl_response",
-)
-async def api_lnurl_response(request: Request, k1: str):
+async def _validate_faucet(k1: str) -> tuple[Faucet, FaucetSecret]:
     secret = await get_faucet_secret(k1)
     if not secret:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="k1 is wrong.")
@@ -29,86 +58,62 @@ async def api_lnurl_response(request: Request, k1: str):
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail="faucet does not exist."
         )
+    if faucet.end_time < datetime.now() or faucet.start_time > datetime.now():
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST, detail="faucet is closed."
+        )
     if faucet.current_k1 != k1:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="k1 is wrong.")
-    url = str(request.url_for("withdraw.api_lnurl_callback", k1=k1))
+    wallet = await get_wallet(faucet.wallet)
+    if not wallet:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND, detail="wallet does not exist."
+        )
+
+    if wallet.balance_msat < faucet.withdrawable:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST, detail="insufficient balance."
+        )
+    return faucet, secret
+
+
+@faucet_lnurl_router.get(
+    "/{k1}",
+    response_class=JSONResponse,
+    name="faucet.api_lnurl_response",
+)
+async def api_lnurl_response(request: Request, k1: str):
+    faucet, secret = await _validate_faucet(k1)
+    url = str(request.url_for("faucet.api_lnurl_callback"))
     amount_msat = 100 * 1000
     return {
         "tag": "withdrawRequest",
         "callback": url,
-        "k1": k1,
+        "k1": secret.k1,
         "minWithdrawable": amount_msat,
         "maxWithdrawable": amount_msat,
         "defaultDescription": faucet.description or faucet.title,
     }
 
-
 @faucet_lnurl_router.get(
-    "/cb/{faucet_id}",
-    name="faucet.api_lnurl_callback",
+    "/cb",
     response_class=JSONResponse,
+    name="faucet.api_lnurl_response",
 )
-async def api_lnurl_callback(
-    faucet_id: str,
-    k1: str,
-    pr: str,
-):
-    faucet = await get_faucet(faucet_id)
-    if not faucet:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="faucet does not exist."
-        )
-    secret = await get_faucet_secret(k1)
-    if not secret or secret.k1 != faucet.current_k1:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="k1 is wrong.")
+async def api_lnurl_callback(k1: str, pr: str):
+    faucet, secret = await _validate_faucet(k1)
 
-    now = int(datetime.now().timestamp())
+    await pay_invoice(
+        wallet_id=faucet.wallet,
+        payment_request=pr,
+        max_sat=faucet.withdrawable,
+        extra={"tag": "faucet", "faucet_id": faucet.id},
+    )
 
-    if now < link.open_time:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail=f"wait link open_time {link.open_time - now} seconds.",
-        )
+    faucet.current_k1 = None
+    faucet.lnurl = None
+    faucet.current_use += 1
+    await update_faucet(faucet)
 
-    if not id_unique_hash and link.is_unique:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail="id_unique_hash is required for this link.",
-        )
-
-    if id_unique_hash:
-        if check_unique_link(link, id_unique_hash):
-            await remove_unique_withdraw_link(link, id_unique_hash)
-        else:
-            raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND, detail="withdraw not found."
-            )
-
-    # Create a record with the id_unique_hash or unique_hash, if it already exists,
-    # raise an exception thus preventing the same LNURL from being processed twice.
-    try:
-        await create_hash_check(id_unique_hash or unique_hash, k1)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST, detail="LNURL already being processed."
-        ) from exc
-
-    try:
-        payment_hash = await pay_invoice(
-            wallet_id=link.wallet,
-            payment_request=pr,
-            max_sat=link.max_withdrawable,
-            extra={"tag": "withdraw", "withdrawal_link_id": link.id},
-        )
-        await increment_withdraw_link(link)
-        # If the payment succeeds, delete the record with the unique_hash.
-        # TODO: we delete this now: "If it has unique_hash, do not delete to prevent
-        # the same LNURL from being processed twice."
-        await delete_hash_check(id_unique_hash or unique_hash)
-        return {"status": "OK"}
-    except Exception as exc:
-        # If payment fails, delete the hash stored so another attempt can be made.
-        await delete_hash_check(id_unique_hash or unique_hash)
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST, detail=f"withdraw not working. {exc!s}"
-        ) from exc
+    secret.used_time = datetime.now()
+    await update_faucet_secret(secret)

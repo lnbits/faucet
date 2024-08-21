@@ -13,7 +13,8 @@ async def m005_initial(db):
             current_k1 TEXT,
             lnurl TEXT,
             uses INTEGER NOT NULL,
-            current_use INTEGER NOT NULL
+            current_use INTEGER NOT NULL,
+            withdrawable INTEGER NOT NULL
         );
     """
     )

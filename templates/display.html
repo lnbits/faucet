@@ -13,20 +13,19 @@ context %} {% block page %}
             to
             <span v-text="formatDateTime(faucet.end_time)"></span>
           </p>
+          <div v-if="!hasEnded() && faucet.lnurl !== undefined">
+            <h5>
+              <span v-if="countdown.days > 0"><span v-text="countdown.days"></span> days,</span>
+              <span v-if="countdown.hours > 0"><span v-text="countdown.hours"></span> hours,</span>
+              <span v-if="countdown.minutes > 0"><span v-text="countdown.minutes"></span> minutes,</span>
+              <span v-text="countdown.seconds"></span> seconds
+            </h5>
+          </div>
           <div v-if="isRunning()">
             <p>
-              Next tick: <span v-text="formatDateTime(faucet.next_tick)"></span>
-            </p>
-            <p>
-              Countdown: <span v-text="countdown"></span>
               <a class="text-secondary" :href="qrLink">
                 <q-responsive :ratio="1" class="q-mx-md">
-                  <qrcode
-                    :value="qrValue"
-                    :options="{width: 800}"
-                    class="rounded-borders"
-                  >
-                  </qrcode>
+                  <qrcode :value="qrValue" :options="{width: 800}" class="rounded-borders"></qrcode>
                 </q-responsive>
               </a>
             </p>

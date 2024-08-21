@@ -81,6 +81,17 @@ async def get_faucet_secret(k1: str) -> Optional[FaucetSecret]:
     return FaucetSecret(**row) if row else None
 
 
+async def get_next_faucet_secret(faucet_id: str) -> Optional[FaucetSecret]:
+    row = await db.fetchone(
+        """
+        SELECT * FROM faucet.secret
+        WHERE used_time IS NULL AND faucet_id = ?
+        """,
+        (faucet_id,),
+    )
+    return FaucetSecret(**row) if row else None
+
+
 async def delete_faucet_secret(k1: str) -> None:
     await db.execute("DELETE FROM faucet.secret WHERE k1 = ?", (k1,))
 

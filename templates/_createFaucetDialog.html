@@ -8,7 +8,10 @@
             v-model="createFaucetDialog.data"
           ></lnbits-dynamic-fields>
           <div class="row q-mt-lg">
-            <q-btn v-close-popup unelevated color="primary" type="submit"
+            <q-btn v-if="createFaucetDialog.data.faucet_id" v-close-popup unelevated color="primary" type="submit"
+              >Update</q-btn
+            >
+            <q-btn v-else v-close-popup unelevated color="primary" type="submit"
               >Create</q-btn
             >
             <q-btn v-close-popup flat color="grey" class="q-ml-auto"

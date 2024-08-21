@@ -13,6 +13,7 @@ class CreateFaucet(BaseModel):
     start_time: datetime.datetime = Query(...)
     end_time: datetime.datetime = Query(...)
     uses: int = Query(..., gt=0)
+    withdrawable: Optional[int] = Query(None, gt=0)
 
 
 class Faucet(BaseModel):
@@ -28,6 +29,7 @@ class Faucet(BaseModel):
     current_use: int = 0
     current_k1: Optional[str] = None
     lnurl: Optional[str] = None
+    withdrawable: int = 10000
 
 
 class FaucetSecret(BaseModel):

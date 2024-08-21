@@ -10,10 +10,25 @@ from .crud import (
     delete_faucet,
     get_faucet,
     get_faucets,
+    update_faucet,
 )
 from .models import CreateFaucet, Faucet
 
 faucet_api_router = APIRouter(prefix="/api/v1")
+
+
+async def _validate_faucet_data(data: CreateFaucet):
+    if data.start_time > data.end_time:
+        raise HTTPException(
+            detail="Start time must be before end time.",
+            status_code=HTTPStatus.BAD_REQUEST,
+        )
+    now = int(datetime.datetime.now().timestamp())
+    if data.start_time.timestamp() < now:
+        raise HTTPException(
+            detail="Start time must be in the future.",
+            status_code=HTTPStatus.BAD_REQUEST,
+        )
 
 
 @faucet_api_router.get("")
@@ -44,18 +59,26 @@ async def api_faucet_create(
 ) -> Faucet:
     if key_type.wallet.id != data.wallet:
         raise HTTPException(detail="Not your wallet.", status_code=HTTPStatus.FORBIDDEN)
-    if data.start_time > data.end_time:
-        raise HTTPException(
-            detail="Start time must be before end time.",
-            status_code=HTTPStatus.BAD_REQUEST,
-        )
-    now = int(datetime.datetime.now().timestamp())
-    if data.start_time.timestamp() < now:
-        raise HTTPException(
-            detail="Start time must be in the future.",
-            status_code=HTTPStatus.BAD_REQUEST,
-        )
+    await _validate_faucet_data(data)
     return await create_faucet(data)
+
+@faucet_api_router.put("/{faucet_id}")
+async def api_faucet_update(
+    faucet_id: str,
+    data: CreateFaucet,
+    wallet: WalletTypeInfo = Depends(require_admin_key),
+):
+    faucet = await get_faucet(faucet_id)
+    if not faucet:
+        raise HTTPException(
+            detail="Faucet does not exist.", status_code=HTTPStatus.NOT_FOUND
+        )
+    if faucet.wallet != wallet.wallet.id:
+        raise HTTPException(detail="Not your Wallet.", status_code=HTTPStatus.FORBIDDEN)
+    await _validate_faucet_data(data)
+    for key, val in data.dict().items():
+        setattr(faucet, key, val)
+    await update_faucet(faucet)
 
 
 @faucet_api_router.delete("/{faucet_id}", status_code=HTTPStatus.OK)

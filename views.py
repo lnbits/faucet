@@ -13,6 +13,7 @@ from lnbits.core.models import User
 from lnbits.decorators import check_user_exists
 from lnbits.helpers import template_renderer
 from lnbits.settings import settings
+from loguru import logger
 
 from .crud import get_faucet
 from .tasks import public_ws_listeners
@@ -55,11 +56,16 @@ async def websocket_faucet(websocket: WebSocket, faucet_id: str):
             status_code=HTTPStatus.NOT_FOUND, detail="Faucet does not exist."
         )
     await websocket.accept()
-    public_ws_listeners[faucet_id] = websocket
+    if faucet_id not in public_ws_listeners:
+        public_ws_listeners[faucet_id] = []
+    public_ws_listeners[faucet_id].append(websocket)
     try:
         # Keep the connection alive
         while settings.lnbits_running:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        del public_ws_listeners[faucet_id]
-        print("WebSocket connection closed", public_ws_listeners)
+        pass
+        # for ws in public_ws_listeners.get(faucet_id, []):
+        #     if ws == websocket:
+        #         public_ws_listeners[faucet_id].remove(ws)
+        #         logger.debug(f"Removed {ws} from {faucet_id}")

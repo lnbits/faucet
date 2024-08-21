@@ -54,6 +54,11 @@ new Vue({
             name: 'current_use',
             label: 'Current Use',
             field: 'current_use'
+          },
+          {
+            name: 'withdrawable',
+            label: 'Withdrawable',
+            field: 'withdrawable'
           }
         ]
       },
@@ -106,6 +111,16 @@ new Vue({
             name: 'uses',
             label: 'Uses',
             required: true
+          },
+          {
+            type: 'number',
+            name: 'withdrawable',
+            label: 'Withdrawable per tick, 0 means (wallet balance / uses)',
+            required: true
+          },
+          {
+            type: 'hidden',
+            name: 'faucet_id'
           }
         ],
         data: {}
@@ -124,10 +139,12 @@ new Vue({
         })
     },
     sendFormData: function () {
+      const faucet_id = this.createFaucetDialog.data.faucet_id
       let data = this.createFaucetDialog.data
       // TODO: remove hack, issue with dynamic fields component
       data.wallet = data.wallet.value
-      if (data.id) {
+      if (faucet_id !== undefined) {
+        data.id = faucet_id
         this.updateFaucet(data)
       } else {
         this.createFaucet(data)
@@ -139,6 +156,8 @@ new Vue({
     },
     openUpdateDialog: function (faucet_id) {
       this.createFaucetDialog.data = _.findWhere(this.faucets, {id: faucet_id})
+      console.log(this.createFaucetDialog.data.id)
+      this.createFaucetDialog.data.faucet_id = faucet_id
       this.createFaucetDialog.show = true
     },
     updateFaucet: function () {

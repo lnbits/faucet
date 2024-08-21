@@ -5,7 +5,7 @@ new Vue({
   data: () => ({
     headline: 'Scan the QR code to get free satoshis',
     faucet: faucet_data,
-    countdown: '00:00:00',
+    countdown: { days: 0, hours: 0, minutes: 0, seconds: 0 },
     countdownTimer: null
   }),
   computed: {
@@ -26,10 +26,11 @@ new Vue({
       this.ws = new WebSocket(url)
       this.ws.addEventListener('message', async ({data}) => {
         const res = JSON.parse(data.toString())
-        console.log(res)
         this.faucet.current_use = res.current_use
+        this.faucet.current_k1 = res.current_k1
         this.faucet.lnurl = res.lnurl
         this.faucet.next_tick = res.next_tick
+        this.startCountdown()
       })
       this.ws.addEventListener('close', async () => {
         this.$q.notify({
@@ -54,31 +55,36 @@ new Vue({
     isRunning: function () {
       return this.hasStarted() && !this.hasEnded()
     },
-    startCountdown: function () {
-      if (this.countdownTimer) clearInterval(this.countdownTimer)
-      this.countdownTimer = setInterval(() => {
+    calculateCountdown: function () {
         const now = new Date().getTime()
         const nextTick = new Date(this.faucet.next_tick).getTime()
         const distance = nextTick - now
         if (distance < 0) {
-          clearInterval(this.countdownTimer)
-          this.countdown = '00:00:00'
+            return { days: 0, hours: 0, minutes: 0, seconds: 0 }
         } else {
-          const hours = Math.floor(
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24))
+            const hours = Math.floor(
             (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-          )
-          const minutes = Math.floor(
+            )
+            const minutes = Math.floor(
             (distance % (1000 * 60 * 60)) / (1000 * 60)
-          )
-          const seconds = Math.floor((distance % (1000 * 60)) / 1000)
-          this.countdown = `${hours}:${minutes}:${seconds}`
+            )
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000)
+            return { days: days, hours: hours, minutes: minutes, seconds: seconds }
         }
+    },
+    startCountdown: function () {
+      if (this.countdownTimer) clearInterval(this.countdownTimer)
+      this.countdownTimer = setInterval(() => {
+          this.countdown = this.calculateCountdown()
       }, 1000)
     }
   },
   created: function () {
     this.initWs()
-    if (isRunning()) {
+    console.log(this.faucet)
+    if (!this.hasEnded()) {
+      this.countdown = this.calculateCountdown()
       this.startCountdown()
     }
   }
