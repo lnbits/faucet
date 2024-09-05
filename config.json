@@ -2,7 +2,7 @@
   "name": "Faucet",
   "short_description": "Make a LNURL and give away free bitcoin",
   "tile": "/withdraw/static/image/lnurl-withdraw.png",
-  "min_lnbits_version": "0.12.5",
+  "min_lnbits_version": "1.0.0",
   "contributors": [
     {
       "name": "dni",
