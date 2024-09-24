@@ -53,25 +53,17 @@ async def get_active_faucets() -> list[Faucet]:
 
 async def get_faucets(wallet_ids: list[str]) -> list[Faucet]:
     q = ",".join([f"'{w}'" for w in wallet_ids])
-    rows = await db.fetchall(
-        f"SELECT * FROM faucet.faucet WHERE wallet IN ({q})",
-    )
+    rows = await db.fetchall(f"SELECT * FROM faucet.faucet WHERE wallet IN ({q})")
     return [Faucet(**row) for row in rows]
 
 
 async def update_faucet(faucet: Faucet) -> Faucet:
-    await db.execute(
-        update_query("faucet.faucet", faucet),
-        faucet.dict(),
-    )
+    await db.execute(update_query("faucet.faucet", faucet), faucet.dict())
     return faucet
 
 
 async def create_faucet_secret(secret: FaucetSecret) -> FaucetSecret:
-    await db.execute(
-        insert_query("faucet.secret", secret),
-        secret.dict(),
-    )
+    await db.execute(insert_query("faucet.secret", secret), secret.dict())
     return secret
 
 
