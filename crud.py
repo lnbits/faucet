@@ -2,7 +2,7 @@ import datetime
 from typing import Optional
 
 from lnbits.db import Database
-from lnbits.helpers import insert_query, update_query, urlsafe_short_hash
+from lnbits.helpers import urlsafe_short_hash
 
 from .models import CreateFaucet, Faucet, FaucetSecret
 
@@ -17,11 +17,7 @@ async def create_faucet(data: CreateFaucet) -> Faucet:
         await create_faucet_secret(FaucetSecret(k1=k1, faucet_id=faucet_id))
 
     faucet = Faucet(id=faucet_id, next_tick=data.start_time, **data.dict())
-    await db.execute(
-        insert_query("faucet.faucet", faucet),
-        faucet.dict(),
-    )
-
+    await db.insert("faucet.faucet", faucet)  # type: ignore
     return faucet
 
 
@@ -33,10 +29,11 @@ async def delete_faucet(faucet_id: str) -> None:
 
 
 async def get_faucet(faucet_id: str) -> Optional[Faucet]:
-    row = await db.fetchone(
-        "SELECT * FROM faucet.faucet WHERE id = :id", {"id": faucet_id}
+    return await db.fetchone(
+        "SELECT * FROM faucet.faucet WHERE id = :id",
+        {"id": faucet_id},
+        Faucet,  # type: ignore
     )
-    return Faucet(**row) if row else None
 
 
 async def get_active_faucets() -> list[Faucet]:
@@ -53,33 +50,36 @@ async def get_active_faucets() -> list[Faucet]:
 
 async def get_faucets(wallet_ids: list[str]) -> list[Faucet]:
     q = ",".join([f"'{w}'" for w in wallet_ids])
-    rows = await db.fetchall(f"SELECT * FROM faucet.faucet WHERE wallet IN ({q})")
-    return [Faucet(**row) for row in rows]
+    return await db.fetchall(
+        f"SELECT * FROM faucet.faucet WHERE wallet IN ({q})",
+        model=Faucet,  # type: ignore
+    )
 
 
 async def update_faucet(faucet: Faucet) -> Faucet:
-    await db.execute(update_query("faucet.faucet", faucet), faucet.dict())
+    await db.update("faucet.faucet", faucet)  # type: ignore
     return faucet
 
 
 async def create_faucet_secret(secret: FaucetSecret) -> FaucetSecret:
-    await db.execute(insert_query("faucet.secret", secret), secret.dict())
+    await db.insert("faucet.secret", secret)  # type: ignore
     return secret
 
 
 async def get_faucet_secret(k1: str) -> Optional[FaucetSecret]:
-    row = await db.fetchone("SELECT * FROM faucet.secret WHERE k1 = :k1", {"k1": k1})
-    return FaucetSecret(**row) if row else None
+    return await db.fetchone(
+        "SELECT * FROM faucet.secret WHERE k1 = :k1",
+        {"k1": k1},
+        FaucetSecret,  # type: ignore
+    )
 
 
 async def get_next_faucet_secret(faucet_id: str) -> Optional[FaucetSecret]:
-    row = await db.fetchone(
-        """
-        SELECT * FROM faucet.secret WHERE used_time IS NULL AND faucet_id = :id
-        """,
+    return await db.fetchone(
+        "SELECT * FROM faucet.secret WHERE used_time IS NULL AND faucet_id = :id",
         {"id": faucet_id},
+        FaucetSecret,  # type: ignore
     )
-    return FaucetSecret(**row) if row else None
 
 
 async def delete_faucet_secret(k1: str) -> None:
@@ -87,8 +87,5 @@ async def delete_faucet_secret(k1: str) -> None:
 
 
 async def update_faucet_secret(secret: FaucetSecret) -> FaucetSecret:
-    await db.execute(
-        update_query("faucet.secret", secret, "WHERE k1 = :k1"),
-        secret.dict(),
-    )
+    await db.update("faucet.secret", secret, "WHERE k1 = :k1")  # type: ignore
     return secret
