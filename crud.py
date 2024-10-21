@@ -17,7 +17,7 @@ async def create_faucet(data: CreateFaucet) -> Faucet:
         await create_faucet_secret(FaucetSecret(k1=k1, faucet_id=faucet_id))
 
     faucet = Faucet(id=faucet_id, next_tick=data.start_time, **data.dict())
-    await db.insert("faucet.faucet", faucet)  # type: ignore
+    await db.insert("faucet.faucet", faucet)
     return faucet
 
 
@@ -32,37 +32,37 @@ async def get_faucet(faucet_id: str) -> Optional[Faucet]:
     return await db.fetchone(
         "SELECT * FROM faucet.faucet WHERE id = :id",
         {"id": faucet_id},
-        Faucet,  # type: ignore
+        Faucet,
     )
 
 
 async def get_active_faucets() -> list[Faucet]:
     now = int(datetime.datetime.now().timestamp())
     ph = db.timestamp_placeholder("now")
-    rows = await db.fetchall(
+    return await db.fetchall(
         f"""
         SELECT * FROM faucet.faucet WHERE start_time <= {ph} AND end_time >= {ph}
         """,
         {"now": now},
+        Faucet,
     )
-    return [Faucet(**row) for row in rows]
 
 
 async def get_faucets(wallet_ids: list[str]) -> list[Faucet]:
     q = ",".join([f"'{w}'" for w in wallet_ids])
     return await db.fetchall(
         f"SELECT * FROM faucet.faucet WHERE wallet IN ({q})",
-        model=Faucet,  # type: ignore
+        model=Faucet,
     )
 
 
 async def update_faucet(faucet: Faucet) -> Faucet:
-    await db.update("faucet.faucet", faucet)  # type: ignore
+    await db.update("faucet.faucet", faucet)
     return faucet
 
 
 async def create_faucet_secret(secret: FaucetSecret) -> FaucetSecret:
-    await db.insert("faucet.secret", secret)  # type: ignore
+    await db.insert("faucet.secret", secret)
     return secret
 
 
@@ -70,7 +70,7 @@ async def get_faucet_secret(k1: str) -> Optional[FaucetSecret]:
     return await db.fetchone(
         "SELECT * FROM faucet.secret WHERE k1 = :k1",
         {"k1": k1},
-        FaucetSecret,  # type: ignore
+        FaucetSecret,
     )
 
 
@@ -78,7 +78,7 @@ async def get_next_faucet_secret(faucet_id: str) -> Optional[FaucetSecret]:
     return await db.fetchone(
         "SELECT * FROM faucet.secret WHERE used_time IS NULL AND faucet_id = :id",
         {"id": faucet_id},
-        FaucetSecret,  # type: ignore
+        FaucetSecret,
     )
 
 
@@ -87,5 +87,5 @@ async def delete_faucet_secret(k1: str) -> None:
 
 
 async def update_faucet_secret(secret: FaucetSecret) -> FaucetSecret:
-    await db.update("faucet.secret", secret, "WHERE k1 = :k1")  # type: ignore
+    await db.update("faucet.secret", secret, "WHERE k1 = :k1")
     return secret

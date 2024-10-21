@@ -1,7 +1,7 @@
-new Vue({
+window.app = Vue.createApp({
   el: '#vue',
   mixins: [windowMixin],
-  data: () => {
+  data() {
     return {
       faucets: [],
       faucetsTable: {
@@ -212,7 +212,7 @@ new Vue({
         })
     }
   },
-  created: function () {
+  created() {
     this.getFaucets()
   }
 })

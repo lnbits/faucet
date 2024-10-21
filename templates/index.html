@@ -22,18 +22,20 @@
         <q-table
           dense
           flat
-          :data="faucets"
+          :rows="faucets"
           row-key="id"
           :columns="faucetsTable.columns"
         >
-          {% raw %}
           <template v-slot:header="props">
             <q-tr :props="props">
               <q-th auto-width></q-th>
               <q-th auto-width></q-th>
-              <q-th v-for="col in props.cols" :key="col.name" :props="props">
-                {{ col.label }}
-              </q-th>
+              <q-th
+                v-for="col in props.cols"
+                :key="col.name"
+                :props="props"
+                v-text="col.label"
+              ></q-th>
               <q-th auto-width></q-th>
             </q-tr>
           </template>
@@ -71,12 +73,14 @@
                   color="pink"
                 ></q-btn>
               </q-td>
-              <q-td v-for="col in props.cols" :key="col.name" :props="props">
-                {{ col.value }}
-              </q-td>
+              <q-td
+                v-for="col in props.cols"
+                :key="col.name"
+                :props="props"
+                v-text="col.value"
+              ></q-td>
             </q-tr>
           </template>
-          {% endraw %}
         </q-table>
       </q-card-section>
     </q-card>

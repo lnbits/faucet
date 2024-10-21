@@ -1,5 +1,4 @@
-Vue.component(VueQrcode.name, VueQrcode)
-new Vue({
+window.app = Vue.createApp({
   el: '#vue',
   mixins: [windowMixin],
   data: () => ({
@@ -87,9 +86,8 @@ new Vue({
       }, 1000)
     }
   },
-  created: function () {
+  created() {
     this.initWs()
-    console.log(this.faucet)
     if (!this.hasEnded()) {
       this.countdown = this.calculateCountdown()
       this.startCountdown()
